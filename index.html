@@ -2,353 +2,254 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Core Engine</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Particle Orb</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            background-color: #030307;
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-        }
-
-        .viewport {
-            width: 100vw;
-            height: 100vh;
-            position: relative;
-            background: #04040c;
-            overflow: hidden;
-        }
-
-        #webgl-container {
-            width: 100%;
-            height: 100%;
-            position: absolute;
-            top: 0;
-            left: 0;
-        }
-
-        .controls-overlay {
-            position: absolute;
-            bottom: 40px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            width: 100%;
-            z-index: 10;
-            pointer-events: none;
-        }
-
-        .mic-wrapper {
-            position: relative;
-            width: 70px;
-            height: 70px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            pointer-events: auto;
-        }
-
-        .plasma-wave {
-            position: absolute;
-            width: 180px;
-            height: 45px;
-            background: linear-gradient(90deg, 
-                rgba(236, 72, 153, 0) 0%, 
-                rgba(236, 72, 153, 0.6) 30%, 
-                rgba(99, 102, 241, 0.6) 70%, 
-                rgba(99, 102, 241, 0) 100%);
-            border-radius: 50%;
-            filter: blur(12px);
-            mix-blend-mode: screen;
-            animation: fluidPulse 2.5s infinite ease-in-out;
-        }
-
-        .plasma-wave-secondary {
-            position: absolute;
-            width: 140px;
-            height: 35px;
-            background: linear-gradient(-90deg, 
-                rgba(168, 85, 247, 0) 0%, 
-                rgba(168, 85, 247, 0.5) 35%, 
-                rgba(6, 182, 212, 0.5) 65%, 
-                rgba(6, 182, 212, 0) 100%);
-            border-radius: 50%;
-            filter: blur(10px);
-            mix-blend-mode: screen;
-            animation: fluidPulse 1.8s infinite ease-in-out reverse;
-        }
-
-        .mic-trigger {
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
-            background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.03) 100%);
-            border: 1px solid rgba(255, 255, 255, 0.25);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            box-shadow: 
-                inset 0 1px 1px rgba(255,255,255,0.4),
-                0 10px 25px rgba(0, 0, 0, 0.5),
-                0 0 15px rgba(139, 92, 246, 0.2);
-            cursor: pointer;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 5;
-            transition: transform 0.2s ease, border-color 0.3s ease;
-        }
-
-        .mic-trigger:active {
-            transform: scale(0.95);
-            border-color: rgba(168, 85, 247, 0.6);
-        }
-
-        .mic-icon {
-            width: 18px;
-            height: 18px;
-            fill: #ffffff;
-            opacity: 0.95;
-            filter: drop-shadow(0 0 4px rgba(255,255,255,0.5));
-        }
-
-        @keyframes fluidPulse {
-            0% { transform: scaleX(0.9) scaleY(0.8) rotate(-2deg); opacity: 0.6; }
-            50% { transform: scaleX(1.1) scaleY(1.2) rotate(3deg); opacity: 0.9; filter: blur(10px); }
-            100% { transform: scaleX(0.9) scaleY(0.8) rotate(-2deg); opacity: 0.6; }
-        }
+        margin: 0;
+        padding: 0;
+        background-color: #050505;
+        overflow: hidden;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        width: 100vw;
+        font-family: sans-serif;
+    }
+    canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+    }
+    #control-panel {
+        position: absolute;
+        bottom: 50px;
+        z-index: 10;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 15px;
+    }
+    button {
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        padding: 12px 24px;
+        font-size: 16px;
+        border-radius: 25px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        backdrop-filter: blur(5px);
+    }
+    button:hover {
+        background: rgba(255, 255, 255, 0.2);
+        border-color: rgba(255, 255, 255, 0.6);
+        box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+    }
+    button:active {
+        transform: scale(0.95);
+    }
+    #status {
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 14px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+    }
     </style>
 </head>
 <body>
 
-    <div class="viewport">
-        <div id="webgl-container"></div>
+    <canvas id="orbCanvas"></canvas>
 
-        <div class="controls-overlay">
-            <div class="mic-wrapper">
-                <div class="plasma-wave"></div>
-                <div class="plasma-wave-secondary"></div>
-                <button class="mic-trigger" aria-label="Voice Activation">
-                    <svg class="mic-icon" viewBox="0 0 24 24">
-                        <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72h-1.7z"/>
-                    </svg>
-                </button>
-            </div>
-        </div>
+    <div id="control-panel">
+        <div id="status">Orb Status: Still</div>
+        <button id="actionBtn">Start AI Speaking Simulation</button>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
-
     <script>
-        const container = document.getElementById('webgl-container');
+    const canvas = document.getElementById('orbCanvas');
+    const actionBtn = document.getElementById('actionBtn');
+    const statusText = document.getElementById('status');
 
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 100);
-        camera.position.z = 3.5;
+    let isSpeaking = false;
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
-        renderer.setSize(container.clientWidth, container.clientHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        renderer.toneMappingExposure = 1.0;
-        container.appendChild(renderer.domElement);
+    const scene = new THREE.Scene();
+    
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.z = 400;
 
-        const vertexShader = `
-            uniform float uTime;
-            uniform float uNoiseFreq;
-            uniform float uNoiseAmp;
-            uniform float uPixelRatio;
-            varying vec3 vPosition;
-            varying float vNoise;
+    const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-            vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-            vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-            vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
-            vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+    const particleCount = 25000;
+    const geometry = new THREE.BufferGeometry();
+    
+    const positions = new Float32Array(particleCount * 3);
+    const colors = new Float32Array(particleCount * 3);
+    const initialPositions = new Float32Array(particleCount * 3);
+    const randomDirections = new Float32Array(particleCount * 3);
+    const speeds = new Float32Array(particleCount);
 
-            float snoise(vec3 v) {
-                const vec2 C = vec2(1.0/6.0, 1.0/3.0) ;
-                const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
-                vec3 i  = floor(v + dot(v, C.yyy) );
-                vec3 x0 =   v - i + dot(i, C.xxx) ;
-                vec3 g = step(x0.yzx, x0.xyz);
-                vec3 l = 1.0 - g;
-                vec3 i1 = min( g.xyz, l.zxy );
-                vec3 i2 = max( g.xyz, l.zxy );
-                vec3 x1 = x0 - i1 + C.xxx;
-                vec3 x2 = x0 - i2 + C.yyy;
-                vec3 x3 = x0 - D.yyy;
-                i = mod289(i);
-                vec4 p = permute( permute( permute(
-                            i.z + vec4(0.0, i1.z, i2.z, 1.0 ))
-                        + i.y + vec4(0.0, i1.y, i2.y, 1.0 ))
-                        + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
-                float n_ = 0.142857142857;
-                vec3 ns = n_ * D.wyz - D.xzx;
-                vec4 j = p - 49.0 * floor(p * ns.z);
-                vec4 x_ = floor(j * ns.z);
-                vec4 y_ = floor(j - 7.0 * x_ );
-                vec4 x = x_ *ns.x + ns.yyyy;
-                vec4 y = y_ *ns.x + ns.yyyy;
-                vec4 h = 1.0 - abs(x) - abs(y);
-                vec4 b0 = vec4( x.xy, y.xy );
-                vec4 b1 = vec4( x.zw, y.zw );
-                vec4 s0 = floor(b0)*2.0 + 1.0;
-                vec4 s1 = floor(b1)*2.0 + 1.0;
-                vec4 sh = -step(h, vec4(0.0));
-                vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
-                vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
-                vec3 p0 = vec3(a0.xy,h.x);
-                vec3 p1 = vec3(a0.zw,h.y);
-                vec3 p2 = vec3(a1.xy,h.z);
-                vec3 p3 = vec3(a1.zw,h.w);
-                vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
-                p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
-                vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
-                m = m * m;
-                return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1),
-                                                dot(p2,x2), dot(p3,x3) ) );
+    const baseRadius = 120;
+
+    for (let i = 0; i < particleCount; i++) {
+        const u = Math.random();
+        const v = Math.random();
+        const theta = u * 2.0 * Math.PI;
+        const phi = Math.acos(2.0 * v - 1.0);
+        
+        const x = baseRadius * Math.sin(phi) * Math.cos(theta);
+        const y = baseRadius * Math.sin(phi) * Math.sin(theta);
+        const z = baseRadius * Math.cos(phi);
+
+        positions[i * 3] = x;
+        positions[i * 3 + 1] = y;
+        positions[i * 3 + 2] = z;
+
+        initialPositions[i * 3] = x;
+        initialPositions[i * 3 + 1] = y;
+        initialPositions[i * 3 + 2] = z;
+
+        const length = Math.sqrt(x*x + y*y + z*z);
+        randomDirections[i * 3] = x / length;
+        randomDirections[i * 3 + 1] = y / length;
+        randomDirections[i * 3 + 2] = z / length;
+
+        speeds[i] = 0.5 + Math.random() * 2.5;
+
+        const mixRatio = Math.random();
+        if (mixRatio < 0.4) {
+            colors[i * 3] = 0.1;
+            colors[i * 3 + 1] = 0.6;
+            colors[i * 3 + 2] = 1.0;
+        } else if (mixRatio < 0.8) {
+            colors[i * 3] = 0.5;
+            colors[i * 3 + 1] = 0.1;
+            colors[i * 3 + 2] = 0.9;
+        } else {
+            colors[i * 3] = 0.9;
+            colors[i * 3 + 1] = 0.9;
+            colors[i * 3 + 2] = 1.0;
+        }
+    }
+
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+    const canvasTexture = document.createElement('canvas');
+    canvasTexture.width = 16;
+    canvasTexture.height = 16;
+    const ctx = canvasTexture.getContext('2d');
+    const gradient = ctx.createRadialGradient(8, 8, 0, 8, 8, 8);
+    gradient.addColorStop(0, 'rgba(255,255,255,1)');
+    gradient.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 16, 16);
+    const texture = new THREE.CanvasTexture(canvasTexture);
+
+    const material = new THREE.PointsMaterial({
+        size: 3.5,
+        map: texture,
+        vertexColors: true,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+    });
+
+    const particleSystem = new THREE.Points(geometry, material);
+    scene.add(particleSystem);
+
+    let clock = new THREE.Clock();
+    let transitionProgress = 0;
+
+    function animate() {
+        requestAnimationFrame(animate);
+
+        const elapsedTime = clock.getElapsedTime();
+        const positionsAttribute = geometry.attributes.position;
+        
+        if (isSpeaking) {
+            if (transitionProgress < 1) {
+                transitionProgress += 0.02;
             }
-
-            void main() {
-                vPosition = position;
-                float noise = snoise(vec3(position.x * uNoiseFreq, position.y * uNoiseFreq + uTime * 0.3, position.z * uNoiseFreq + uTime * 0.2));
-                vNoise = noise;
-                
-                vec3 newPosition = position + normal * noise * uNoiseAmp;
-                vec4 mvPosition = modelViewMatrix * vec4(newPosition, 1.0);
-                gl_Position = projectionMatrix * mvPosition;
-                
-                gl_PointSize = (15.0 * uPixelRatio / -mvPosition.z) * (1.0 + noise * 0.5);
+        } else {
+            if (transitionProgress > 0) {
+                transitionProgress -= 0.02;
             }
-        `;
-
-        const fragmentShader = `
-            varying vec3 vPosition;
-            varying float vNoise;
-            uniform float uTime;
-
-            void main() {
-                float dist = distance(gl_PointCoord, vec2(0.5));
-                if (dist > 0.5) discard;
-                
-                vec3 deepPurple = vec3(0.15, 0.03, 0.35);
-                vec3 electricBlue = vec3(0.2, 0.55, 1.0);
-                vec3 coreNeonPink = vec3(0.95, 0.25, 0.65);
-                
-                vec3 color = mix(deepPurple, electricBlue, vNoise + 0.4);
-                color = mix(color, coreNeonPink, max(0.0, vPosition.z * 0.5));
-                
-                float alpha = smoothstep(0.5, 0.1, dist) * (0.6 + vNoise * 0.4);
-                gl_FragColor = vec4(color, alpha);
-            }
-        `;
-
-        const particleCount = 25000; 
-        const geometry = new THREE.BufferGeometry();
-        const positions = new Float32Array(particleCount * 3);
-        const normals = new Float32Array(particleCount * 3);
+        }
 
         for (let i = 0; i < particleCount; i++) {
-            const u = Math.random();
-            const v = Math.random();
-            const theta = u * 2.0 * Math.PI;
-            const phi = Math.acos(2.0 * v - 1.0);
+            const ix = i * 3;
+            const iy = i * 3 + 1;
+            const iz = i * 3 + 2;
+
+            const initX = initialPositions[ix];
+            const initY = initialPositions[iy];
+            const initZ = initialPositions[iz];
+
+            const dirX = randomDirections[ix];
+            const dirY = randomDirections[iy];
+            const dirZ = randomDirections[iz];
+
+            const pSpeed = speeds[i];
+
+            const waveX = Math.sin(elapsedTime * 4 + initY * 0.05) * 4;
+            const waveY = Math.cos(elapsedTime * 4 + initX * 0.05) * 4;
+            const waveZ = Math.sin(elapsedTime * 4 + initZ * 0.05) * 4;
+
+            const idleX = initX + waveX;
+            const idleY = initY + waveY;
+            const idleZ = initZ + waveZ;
+
+            const burstFrequency = 8.0;
+            const burstAmplitude = 45.0;
             
-            const radius = 1.1 + (Math.random() - 0.5) * 0.1; 
+            const noiseFactor = Math.sin(elapsedTime * burstFrequency + (initX + initY + initZ) * 0.01);
+            const dynamicBurst = burstAmplitude * (0.4 + 0.6 * Math.sin(elapsedTime * 12 + pSpeed));
+            
+            const speakX = initX + dirX * dynamicBurst * Math.abs(noiseFactor) + Math.sin(elapsedTime * 10 + i) * 12;
+            const speakY = initY + dirY * dynamicBurst * Math.abs(noiseFactor) + Math.cos(elapsedTime * 10 + i) * 12;
+            const speakZ = initZ + dirZ * dynamicBurst * Math.abs(noiseFactor) + Math.sin(elapsedTime * 10 + i * 2) * 12;
 
-            const x = radius * Math.sin(phi) * Math.cos(theta);
-            const y = radius * Math.sin(phi) * Math.sin(theta);
-            const z = radius * Math.cos(phi);
-
-            positions[i * 3] = x;
-            positions[i * 3 + 1] = y;
-            positions[i * 3 + 2] = z;
-
-            const vec = new THREE.Vector3(x, y, z).normalize();
-            normals[i * 3] = vec.x;
-            normals[i * 3 + 1] = vec.y;
-            normals[i * 3 + 2] = vec.z;
+            positionsAttribute.array[ix] = THREE.MathUtils.lerp(idleX, speakX, transitionProgress);
+            positionsAttribute.array[iy] = THREE.MathUtils.lerp(idleY, speakY, transitionProgress);
+            positionsAttribute.array[iz] = THREE.MathUtils.lerp(idleZ, speakZ, transitionProgress);
         }
 
-        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        geometry.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+        positionsAttribute.needsUpdate = true;
 
-        const uniformData = {
-            uTime: { value: 0.0 },
-            uNoiseFreq: { value: 1.8 },
-            uNoiseAmp: { value: 0.4 },
-            uPixelRatio: { value: Math.min(window.devicePixelRatio, 2) }
-        };
+        particleSystem.rotation.y = elapsedTime * 0.05;
+        particleSystem.rotation.x = elapsedTime * 0.02;
 
-        const shaderMaterial = new THREE.ShaderMaterial({
-            vertexShader: vertexShader,
-            fragmentShader: fragmentShader,
-            uniforms: uniformData,
-            transparent: true,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false
-        });
+        renderer.render(scene, camera);
+    }
 
-        const particleSystem = new THREE.Points(geometry, shaderMaterial);
-        scene.add(particleSystem);
-
-        const renderScene = new THREE.RenderPass(scene, camera);
+    actionBtn.addEventListener('click', () => {
+        isSpeaking = !isSpeaking;
         
-        const bloomPass = new THREE.UnrealBloomPass(
-            new THREE.Vector2(container.clientWidth, container.clientHeight), 
-            1.8,  
-            0.5,  
-            0.1
-        );
-
-        const composer = new THREE.EffectComposer(renderer);
-        composer.addPass(renderScene);
-        composer.addPass(bloomPass);
-
-        const clock = new THREE.Clock();
-
-        function renderFrame() {
-            requestAnimationFrame(renderFrame);
-            
-            const elapsedTime = clock.getElapsedTime();
-            uniformData.uTime.value = elapsedTime;
-
-            particleSystem.rotation.y = elapsedTime * 0.05;
-            particleSystem.rotation.x = Math.sin(elapsedTime * 0.08) * 0.08;
-
-            composer.render();
+        if (isSpeaking) {
+            actionBtn.innerText = "Stop AI Speaking Simulation";
+            statusText.innerText = "Orb Status: AI Speaking...";
+            statusText.style.color = "#00e5ff";
+        } else {
+            actionBtn.innerText = "Start AI Speaking Simulation";
+            statusText.innerText = "Orb Status: Still";
+            statusText.style.color = "rgba(255, 255, 255, 0.6)";
         }
+    });
 
-        renderFrame();
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
 
-        window.addEventListener('resize', () => {
-            const width = container.clientWidth;
-            const height = container.clientHeight;
-            
-            camera.aspect = width / height;
-            camera.updateProjectionMatrix();
-            
-            renderer.setSize(width, height);
-            composer.setSize(width, height);
-            uniformData.uPixelRatio.value = Math.min(window.devicePixelRatio, 2);
-        });
+    animate();
     </script>
 </body>
-    </html>
+</html>
