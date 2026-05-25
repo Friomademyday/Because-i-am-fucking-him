@@ -3,109 +3,121 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Particle Orb</title>
+    <title>AI Particle Orb Exact Replica</title>
     <style>
-        margin: 0;
-        padding: 0;
-        background-color: #050505;
-        overflow: hidden;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
-        width: 100vw;
-        font-family: sans-serif;
-    }
-    canvas {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: 1;
-    }
-    #control-panel {
-        position: absolute;
-        bottom: 50px;
-        z-index: 10;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 15px;
-    }
-    button {
-        background: rgba(255, 255, 255, 0.1);
-        color: white;
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        padding: 12px 24px;
-        font-size: 16px;
-        border-radius: 25px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        backdrop-filter: blur(5px);
-    }
-    button:hover {
-        background: rgba(255, 255, 255, 0.2);
-        border-color: rgba(255, 255, 255, 0.6);
-        box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
-    }
-    button:active {
-        transform: scale(0.95);
-    }
-    #status {
-        color: rgba(255, 255, 255, 0.6);
-        font-size: 14px;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-    }
+        body, html {
+            margin: 0;
+            padding: 0;
+            background: radial-gradient(circle at center, #0a1128 0%, #050505 100%); /* Deep space backdrop */
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            width: 100vw;
+            color: white;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        #ui-overlay {
+            position: absolute;
+            z-index: 10;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        #status {
+            font-size: 14px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            text-shadow: 0 0 10px #00e5ff;
+        }
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            font-size: 12px;
+            opacity: 0.5;
+        }
     </style>
 </head>
 <body>
 
     <canvas id="orbCanvas"></canvas>
 
-    <div id="control-panel">
-        <div id="status">Orb Status: Still</div>
-        <button id="actionBtn">Start AI Speaking Simulation</button>
+    <div id="ui-overlay">
+        <div id="status">ORB STATUS: STILL</div>
+        <button id="toggleBtn" style="pointer-events: auto;">TOGGLE AI SPEECH</button>
     </div>
+    
+    <div id="instructions">Click 'TOGGLE AI SPEECH' to switch states. Microphone input is not required.</div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/math/SimplexNoise.js"></script>
+
     <script>
     const canvas = document.getElementById('orbCanvas');
-    const actionBtn = document.getElementById('actionBtn');
+    const toggleBtn = document.getElementById('toggleBtn');
     const statusText = document.getElementById('status');
 
     let isSpeaking = false;
+    let speakingTime = 0; // Separate timer for speech animation logic
 
     const scene = new THREE.Scene();
-    
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.z = 400;
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 2000);
+    camera.position.z = 450;
 
     const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.toneMapping = THREE.ReinhardToneMapping; // Required for bloom to work well
 
-    const particleCount = 25000;
+    const renderScene = new THREE.RenderPass(scene, camera);
+    const bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+    bloomPass.threshold = 0.1; 
+    bloomPass.strength = 1.6; // High intensity for the neon glow
+    bloomPass.radius = 0.5;
+
+    const composer = new THREE.EffectComposer(renderer);
+    composer.addPass(renderScene);
+    composer.addPass(bloomPass);
+
+    const simplex = new THREE.SimplexNoise();
+
+    const baseParticleCount = 100000; // Very high density to remove the 'dots' look
     const geometry = new THREE.BufferGeometry();
     
-    const positions = new Float32Array(particleCount * 3);
-    const colors = new Float32Array(particleCount * 3);
-    const initialPositions = new Float32Array(particleCount * 3);
-    const randomDirections = new Float32Array(particleCount * 3);
-    const speeds = new Float32Array(particleCount);
+    const positions = new Float32Array(baseParticleCount * 3);
+    const colors = new Float32Array(baseParticleCount * 3);
+    const initialPositions = new Float32Array(baseParticleCount * 3);
+    const speeds = new Float32Array(baseParticleCount);
+    const noiseOffsets = new Float32Array(baseParticleCount);
 
-    const baseRadius = 120;
+    const baseRadius = 140;
 
-    for (let i = 0; i < particleCount; i++) {
+    for (let i = 0; i < baseParticleCount; i++) {
         const u = Math.random();
         const v = Math.random();
         const theta = u * 2.0 * Math.PI;
         const phi = Math.acos(2.0 * v - 1.0);
         
-        const x = baseRadius * Math.sin(phi) * Math.cos(theta);
-        const y = baseRadius * Math.sin(phi) * Math.sin(theta);
-        const z = baseRadius * Math.cos(phi);
+        const r = baseRadius * (0.8 + 0.2 * Math.random()); // Make the core slightly diffused
+        const x = r * Math.sin(phi) * Math.cos(theta);
+        const y = r * Math.sin(phi) * Math.sin(theta);
+        const z = r * Math.cos(phi);
 
         positions[i * 3] = x;
         positions[i * 3 + 1] = y;
@@ -115,25 +127,24 @@
         initialPositions[i * 3 + 1] = y;
         initialPositions[i * 3 + 2] = z;
 
-        const length = Math.sqrt(x*x + y*y + z*z);
-        randomDirections[i * 3] = x / length;
-        randomDirections[i * 3 + 1] = y / length;
-        randomDirections[i * 3 + 2] = z / length;
-
-        speeds[i] = 0.5 + Math.random() * 2.5;
+        speeds[i] = 1.0 + Math.random() * 2.0; // Randomize energy of particles
+        noiseOffsets[i] = Math.random() * 1000; // Unique offset for Simplex noise
 
         const mixRatio = Math.random();
-        if (mixRatio < 0.4) {
-            colors[i * 3] = 0.1;
-            colors[i * 3 + 1] = 0.6;
+        if (mixRatio < 0.6) {
+            // Bright, pale electric blue/cyan (Core)
+            colors[i * 3] = 0.5 + Math.random() * 0.3;
+            colors[i * 3 + 1] = 0.95;
             colors[i * 3 + 2] = 1.0;
-        } else if (mixRatio < 0.8) {
-            colors[i * 3] = 0.5;
-            colors[i * 3 + 1] = 0.1;
-            colors[i * 3 + 2] = 0.9;
+        } else if (mixRatio < 0.9) {
+            // Purple/Magenta (Outer bloom)
+            colors[i * 3] = 0.7;
+            colors[i * 3 + 1] = 0.2;
+            colors[i * 3 + 2] = 1.0;
         } else {
-            colors[i * 3] = 0.9;
-            colors[i * 3 + 1] = 0.9;
+            // Hot white core particles
+            colors[i * 3] = 1.0;
+            colors[i * 3 + 1] = 1.0;
             colors[i * 3 + 2] = 1.0;
         }
     }
@@ -147,25 +158,27 @@
     const ctx = canvasTexture.getContext('2d');
     const gradient = ctx.createRadialGradient(8, 8, 0, 8, 8, 8);
     gradient.addColorStop(0, 'rgba(255,255,255,1)');
-    gradient.addColorStop(1, 'rgba(255,255,255,0)');
+    gradient.addColorStop(0.3, 'rgba(255,255,255,0.7)');
+    gradient.addColorStop(1, 'rgba(255,255,255,0)'); // Smooth falloff for particles
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, 16, 16);
-    const texture = new THREE.CanvasTexture(canvasTexture);
+    const particleMap = new THREE.CanvasTexture(canvasTexture);
 
     const material = new THREE.PointsMaterial({
-        size: 3.5,
-        map: texture,
+        size: 2.5,
+        map: particleMap,
         vertexColors: true,
         transparent: true,
+        opacity: 0.85,
         blending: THREE.AdditiveBlending,
-        depthWrite: false
+        depthWrite: false,
     });
 
     const particleSystem = new THREE.Points(geometry, material);
     scene.add(particleSystem);
 
     let clock = new THREE.Clock();
-    let transitionProgress = 0;
+    let transitionProgress = 0; // 0 for still, 1 for speaking
 
     function animate() {
         requestAnimationFrame(animate);
@@ -173,17 +186,17 @@
         const elapsedTime = clock.getElapsedTime();
         const positionsAttribute = geometry.attributes.position;
         
+        // --- 1. HANDLE TRANSITION BETWEEN STATES ---
         if (isSpeaking) {
-            if (transitionProgress < 1) {
-                transitionProgress += 0.02;
-            }
+            transitionProgress = THREE.MathUtils.lerp(transitionProgress, 1.0, 0.05); // Faster blend in
+            speakingTime += clock.getDelta(); // Start speech timer
         } else {
-            if (transitionProgress > 0) {
-                transitionProgress -= 0.02;
-            }
+            transitionProgress = THREE.MathUtils.lerp(transitionProgress, 0.0, 0.03); // Slower settle down
+            speakingTime = 0; // Reset speech timer
         }
 
-        for (let i = 0; i < particleCount; i++) {
+        // --- 2. CALCULATE PARTICLE MOVEMENT LOOP ---
+        for (let i = 0; i < baseParticleCount; i++) {
             const ix = i * 3;
             const iy = i * 3 + 1;
             const iz = i * 3 + 2;
@@ -192,54 +205,85 @@
             const initY = initialPositions[iy];
             const initZ = initialPositions[iz];
 
-            const dirX = randomDirections[ix];
-            const dirY = randomDirections[iy];
-            const dirZ = randomDirections[iz];
-
             const pSpeed = speeds[i];
+            const noiseOff = noiseOffsets[i];
 
-            const waveX = Math.sin(elapsedTime * 4 + initY * 0.05) * 4;
-            const waveY = Math.cos(elapsedTime * 4 + initX * 0.05) * 4;
-            const waveZ = Math.sin(elapsedTime * 4 + initZ * 0.05) * 4;
+            const length = Math.sqrt(initX*initX + initY*initY + initZ*initZ);
+            const dirX = initX / length;
+            const dirY = initY / length;
+            const dirZ = initZ / length;
 
-            const idleX = initX + waveX;
-            const idleY = initY + waveY;
-            const idleZ = initZ + waveZ;
+            // -- IDLE MOTION (STILL) --
+            // Slow, subtle, organic breathing using Simplex Noise
+            const slowNoiseScale = 0.003;
+            const slowNoiseSpeed = 0.15;
+            const idleOffset = 5.0; // Minimal movement when still
 
-            const burstFrequency = 8.0;
-            const burstAmplitude = 45.0;
+            const idleX = initX + dirX * simplex.noise3d(initX * slowNoiseScale + noiseOff, initY * slowNoiseScale, elapsedTime * slowNoiseSpeed) * idleOffset;
+            const idleY = initY + dirY * simplex.noise3d(initX * slowNoiseScale, initY * slowNoiseScale + noiseOff, elapsedTime * slowNoiseSpeed) * idleOffset;
+            const idleZ = initZ + dirZ * simplex.noise3d(initY * slowNoiseScale, initZ * slowNoiseScale + noiseOff, elapsedTime * slowNoiseSpeed) * idleOffset;
+
+            // -- SPEAKING MOTION (ACTIVE) --
+            // Create the complex, whip-like smoke tendrils
             
-            const noiseFactor = Math.sin(elapsedTime * burstFrequency + (initX + initY + initZ) * 0.01);
-            const dynamicBurst = burstAmplitude * (0.4 + 0.6 * Math.sin(elapsedTime * 12 + pSpeed));
+            // a) Core fluid turbulence (the messy center)
+            const turbulentNoiseScale = 0.007;
+            const turbulentSpeed = 1.0;
+            const turbulenceAmp = 20.0;
             
-            const speakX = initX + dirX * dynamicBurst * Math.abs(noiseFactor) + Math.sin(elapsedTime * 10 + i) * 12;
-            const speakY = initY + dirY * dynamicBurst * Math.abs(noiseFactor) + Math.cos(elapsedTime * 10 + i) * 12;
-            const speakZ = initZ + dirZ * dynamicBurst * Math.abs(noiseFactor) + Math.sin(elapsedTime * 10 + i * 2) * 12;
+            const turbX = simplex.noise3d(initX * turbulentNoiseScale + noiseOff, initY * turbulentNoiseScale, speakingTime * turbulentSpeed);
+            const turbY = simplex.noise3d(initY * turbulentNoiseScale + noiseOff, initZ * turbulentNoiseScale, speakingTime * turbulentSpeed);
+            const turbZ = simplex.noise3d(initZ * turbulentNoiseScale + noiseOff, initX * turbulentNoiseScale, speakingTime * turbulentSpeed);
 
+            // b) Explosive radial trails (the whipping tendrils)
+            const burstSpeed = 4.0;
+            const maxBurstAmplitude = 180.0; // Extreme reach to match the image
+            const trailComplexity = 0.0015; // Makes trails long and coherent
+
+            // This noise determines IF a particle bursts out and how far
+            const burstNoise = simplex.noise3d(initX * trailComplexity, initY * trailComplexity + noiseOff, speakingTime * burstSpeed);
+            const burstPower = Math.max(0, burstNoise); // Only burst on positive noise waves
+
+            // c) Whipping action (side-to-side motion of the trails)
+            const whipSpeed = 12.0;
+            const whipAmp = 18.0;
+            const whipX = Math.sin(speakingTime * whipSpeed + i * 0.1) * whipAmp;
+            const whipY = Math.cos(speakingTime * whipSpeed + i * 0.1) * whipAmp;
+
+            // d) Combine active forces
+            const speakX = initX + turbX * turbulenceAmp + dirX * burstPower * maxBurstAmplitude * pSpeed + whipX;
+            const speakY = initY + turbY * turbulenceAmp + dirY * burstPower * maxBurstAmplitude * pSpeed + whipY;
+            const speakZ = initZ + turbZ * turbulenceAmp + dirZ * burstPower * maxBurstAmplitude * pSpeed;
+
+            // --- 3. APPLY LINEAR INTERPOLATION (LERP) BASED ON TRANSITION ---
+            // This is how we smoothly blend between the two defined movement states.
+            // If transitionProgress is 0, it uses idle motion. If 1, it uses full speech motion.
             positionsAttribute.array[ix] = THREE.MathUtils.lerp(idleX, speakX, transitionProgress);
             positionsAttribute.array[iy] = THREE.MathUtils.lerp(idleY, speakY, transitionProgress);
             positionsAttribute.array[iz] = THREE.MathUtils.lerp(idleZ, speakZ, transitionProgress);
         }
 
-        positionsAttribute.needsUpdate = true;
+        positionsAttribute.needsUpdate = true; // Tell Three.js positions have changed
 
+        // Slow overall rotation for dimension
         particleSystem.rotation.y = elapsedTime * 0.05;
-        particleSystem.rotation.x = elapsedTime * 0.02;
 
-        renderer.render(scene, camera);
+        composer.render(); // Render using the Bloom post-processing pipeline
     }
 
-    actionBtn.addEventListener('click', () => {
+    toggleBtn.addEventListener('click', () => {
         isSpeaking = !isSpeaking;
         
         if (isSpeaking) {
-            actionBtn.innerText = "Stop AI Speaking Simulation";
-            statusText.innerText = "Orb Status: AI Speaking...";
+            toggleBtn.innerText = "STOP AI SPEECH";
+            statusText.innerText = "ORB STATUS: AI SPEAKING...";
             statusText.style.color = "#00e5ff";
+            statusText.style.textShadow = "0 0 15px #00e5ff";
         } else {
-            actionBtn.innerText = "Start AI Speaking Simulation";
-            statusText.innerText = "Orb Status: Still";
-            statusText.style.color = "rgba(255, 255, 255, 0.6)";
+            toggleBtn.innerText = "TOGGLE AI SPEECH";
+            statusText.innerText = "ORB STATUS: STILL";
+            statusText.style.color = "white";
+            statusText.style.textShadow = "0 0 10px #00e5ff";
         }
     });
 
@@ -247,9 +291,10 @@
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
+        composer.setSize(window.innerWidth, window.innerHeight);
     });
 
-    animate();
+    animate(); // Begin the animation loop
     </script>
 </body>
 </html>
