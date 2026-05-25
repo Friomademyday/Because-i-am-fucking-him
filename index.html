@@ -3,286 +3,353 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI Assistant</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    
+    <title>Core Engine</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap');
-
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: 'Inter', sans-serif;
         }
 
         body {
-            background-color: #0b0c10;
-            color: #ffffff;
+            background-color: #030307;
+            overflow: hidden;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
+        }
+
+        .viewport {
+            width: 100%;
+            max-width: 420px;
+            height: 100vh;
+            max-height: 880px;
+            position: relative;
+            background: #04040c;
             overflow: hidden;
         }
 
-        
-        .app-container {
+        #webgl-container {
             width: 100%;
-            max-width: 400px;
-            height: 100vh;
-            max-height: 850px;
-            background: radial-gradient(circle at center, #1a1b35 0%, #050508 100%);
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            box-shadow: 0 0 50px rgba(0,0,0,0.5);
-        }
-
-
-        .header {
-            text-align: center;
-            padding: 40px 20px 0;
-            z-index: 10;
-        }
-
-        .avatar {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            object-fit: cover;
-            margin-bottom: 10px;
-            border: 2px solid rgba(255, 255, 255, 0.2);
-        }
-
-        h1 {
-            font-size: 1.2rem;
-            font-weight: 600;
-            margin-bottom: 5px;
-            letter-spacing: 0.5px;
-        }
-
-        .subtitle {
-            font-size: 0.9rem;
-            color: #a0a0b5;
-            font-weight: 300;
-        }
-
-        
-        #canvas-container {
-            flex-grow: 1;
-            width: 100%;
-            position: relative;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin-top: -20px;
-        }
-
-        
-        .info-panel {
-            text-align: center;
-            padding: 20px;
-            z-index: 10;
-            margin-bottom: 80px;
-        }
-
-        .info-panel p {
-            font-size: 0.95rem;
-            color: #b3b3c6;
-            margin-bottom: 5px;
-        }
-
-        .info-panel .highlight {
-            color: #ffffff;
-            font-weight: 600;
-        }
-
-     
-        .bottom-nav {
+            height: 100%;
             position: absolute;
-            bottom: 30px;
+            top: 0;
+            left: 0;
+        }
+
+        .controls-overlay {
+            position: absolute;
+            bottom: 40px;
             left: 50%;
             transform: translateX(-50%);
-            width: 85%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            z-index: 10;
+        }
+
+        .mic-wrapper {
+            position: relative;
+            width: 70px;
             height: 70px;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 20px;
-            z-index: 20;
-        }
-
-        .nav-btn {
-            background: none;
-            border: none;
-            color: #8e8e9f;
-            font-size: 1.2rem;
-            cursor: pointer;
-            transition: color 0.3s ease;
-        }
-
-        .nav-btn:hover { color: #ffffff; }
-
-        .mic-btn-container {
-            position: relative;
-            width: 60px;
-            height: 60px;
-            display: flex;
             justify-content: center;
             align-items: center;
         }
 
-        .mic-btn {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(10px);
-            color: #ffffff;
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            font-size: 1.2rem;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 2;
-            box-shadow: 0 0 20px rgba(138, 43, 226, 0.4);
-        }
-
-        
-        .wave {
+        .plasma-wave {
             position: absolute;
-            width: 150px;
-            height: 40px;
-            background: linear-gradient(90deg, transparent, rgba(138, 43, 226, 0.6), rgba(0, 212, 255, 0.6), transparent);
+            width: 180px;
+            height: 45px;
+            background: linear-gradient(90deg, 
+                rgba(236, 72, 153, 0) 0%, 
+                rgba(236, 72, 153, 0.6) 30%, 
+                rgba(99, 102, 241, 0.6) 70%, 
+                rgba(99, 102, 241, 0) 100%);
             border-radius: 50%;
-            z-index: 1;
-            filter: blur(8px);
-            animation: pulseWave 2s infinite ease-in-out;
+            filter: blur(12px);
+            mix-blend-mode: screen;
+            animation: fluidPulse 2.5s infinite ease-in-out;
         }
 
-        @keyframes pulseWave {
-            0% { transform: scale(0.8); opacity: 0.5; }
-            50% { transform: scale(1.2); opacity: 1; }
-            100% { transform: scale(0.8); opacity: 0.5; }
+        .plasma-wave-secondary {
+            position: absolute;
+            width: 140px;
+            height: 35px;
+            background: linear-gradient(-90deg, 
+                rgba(168, 85, 247, 0) 0%, 
+                rgba(168, 85, 247, 0.5) 35%, 
+                rgba(6, 182, 212, 0.5) 65%, 
+                rgba(6, 182, 212, 0) 100%);
+            border-radius: 50%;
+            filter: blur(10px);
+            mix-blend-mode: screen;
+            animation: fluidPulse 1.8s infinite ease-in-out reverse;
+        }
+
+        .mic-trigger {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.03) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow: 
+                inset 0 1px 1px rgba(255,255,255,0.4),
+                0 10px 25px rgba(0, 0, 0, 0.5),
+                0 0 15px rgba(139, 92, 246, 0.2);
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 5;
+            transition: transform 0.2s ease, border-color 0.3s ease;
+        }
+
+        .mic-trigger:active {
+            transform: scale(0.95);
+            border-color: rgba(168, 85, 247, 0.6);
+        }
+
+        .mic-icon {
+            width: 18px;
+            height: 18px;
+            fill: #ffffff;
+            opacity: 0.95;
+            filter: drop-shadow(0 0 4px rgba(255,255,255,0.5));
+        }
+
+        @keyframes fluidPulse {
+            0% { transform: scaleX(0.9) scaleY(0.8) rotate(-2deg); opacity: 0.6; }
+            50% { transform: scaleX(1.1) scaleY(1.2) rotate(3deg); opacity: 0.9; filter: blur(10px); }
+            100% { transform: scaleX(0.9) scaleY(0.8) rotate(-2deg); opacity: 0.6; }
         }
     </style>
 </head>
 <body>
 
-    <div class="app-container">
-        <header class="header">
-            <img src="https://ui-avatars.com/api/?name=Michael&background=random" alt="User Avatar" class="avatar">
-            <h1>Hi, Michael</h1>
-            <p class="subtitle">I can help</p>
-        </header>
+    <div class="viewport">
+        <div id="webgl-container"></div>
 
-        <div id="canvas-container"></div>
-
-        <div class="info-panel">
-            <p>Michael's meeting with shareholders</p>
-            <p>It will be <span class="highlight">tomorrow at 3:00 PM</span></p>
-        </div>
-
-        <nav class="bottom-nav">
-            <button class="nav-btn"><i class="fa-solid fa-house"></i></button>
-            
-            <div class="mic-btn-container">
-                <div class="wave"></div>
-                <div class="mic-btn">
-                    <i class="fa-solid fa-microphone"></i>
-                </div>
+        <div class="controls-overlay">
+            <div class="mic-wrapper">
+                <div class="plasma-wave"></div>
+                <div class="plasma-wave-secondary"></div>
+                <button class="mic-trigger" aria-label="Voice Activation">
+                    <svg class="mic-icon" viewBox="0 0 24 24">
+                        <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72h-1.7z"/>
+                    </svg>
+                </button>
             </div>
-            
-            <button class="nav-btn"><i class="fa-solid fa-sliders"></i></button>
-        </nav>
+        </div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+
     <script>
-        const container = document.getElementById('canvas-container');
-        
-        
+        const container = document.getElementById('webgl-container');
+
         const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-        
+        const camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 100);
+        camera.position.z = 4.0;
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
         renderer.setSize(container.clientWidth, container.clientHeight);
-        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.2;
         container.appendChild(renderer.domElement);
 
-        const particlesGeometry = new THREE.BufferGeometry();
-        const particlesCount = 3500; // Adjust for density
-        const posArray = new Float32Array(particlesCount * 3);
+        const vertexShader = `
+            uniform float uTime;
+            uniform float uNoiseFreq;
+            uniform float uNoiseAmp;
+            varying vec3 vPosition;
+            varying float vNoise;
 
-        
-        for(let i = 0; i < particlesCount * 3; i += 3) {
-            const radius = 1.8;
-            const theta = 2 * Math.PI * Math.random();
-            const phi = Math.acos(2 * Math.random() - 1);
+            vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+            vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+            vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
+            vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+
+            float snoise(vec3 v) {
+                const vec2 C = vec2(1.0/6.0, 1.0/3.0) ;
+                const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+                vec3 i  = floor(v + dot(v, C.yyy) );
+                vec3 x0 =   v - i + dot(i, C.xxx) ;
+                vec3 g = step(x0.yzx, x0.xyz);
+                vec3 l = 1.0 - g;
+                vec3 i1 = min( g.xyz, l.zxy );
+                vec3 i2 = max( g.xyz, l.zxy );
+                vec3 x1 = x0 - i1 + C.xxx;
+                vec3 x2 = x0 - i2 + C.yyy;
+                vec3 x3 = x0 - D.yyy;
+                i = mod289(i);
+                vec4 p = permute( permute( permute(
+                            i.z + vec4(0.0, i1.z, i2.z, 1.0 ))
+                        + i.y + vec4(0.0, i1.y, i2.y, 1.0 ))
+                        + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
+                float n_ = 0.142857142857;
+                vec3 ns = n_ * D.wyz - D.xzx;
+                vec4 j = p - 49.0 * floor(p * ns.z);
+                vec4 x_ = floor(j * ns.z);
+                vec4 y_ = floor(j - 7.0 * x_ );
+                vec4 x = x_ *ns.x + ns.yyyy;
+                vec4 y = y_ *ns.x + ns.yyyy;
+                vec4 h = 1.0 - abs(x) - abs(y);
+                vec4 b0 = vec4( x.xy, y.xy );
+                vec4 b1 = vec4( x.zw, y.zw );
+                vec4 s0 = floor(b0)*2.0 + 1.0;
+                vec4 s1 = floor(b1)*2.0 + 1.0;
+                vec4 sh = -step(h, vec4(0.0));
+                vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
+                vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
+                vec3 p0 = vec3(a0.xy,h.x);
+                vec3 p1 = vec3(a0.zw,h.y);
+                vec3 p2 = vec3(a1.xy,h.z);
+                vec3 p3 = vec3(a1.zw,h.w);
+                vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
+                p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
+                vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+                m = m * m;
+                return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1),
+                                                dot(p2,x2), dot(p3,x3) ) );
+            }
+
+            void main() {
+                vPosition = position;
+                
+                float noise = snoise(vec3(position.x * uNoiseFreq, position.y * uNoiseFreq + uTime * 0.4, position.z * uNoiseFreq + uTime * 0.3));
+                vNoise = noise;
+                
+                vec3 newPosition = position + normal * noise * uNoiseAmp;
+                
+                vec4 mvPosition = modelViewMatrix * vec4(newPosition, 1.0);
+                gl_Position = projectionMatrix * mvPosition;
+                
+                gl_PointSize = (2.2 / -mvPosition.z) * (2.0 + noise * 1.5);
+            }
+        `;
+
+        const fragmentShader = `
+            varying vec3 vPosition;
+            varying float vNoise;
+            uniform float uTime;
+
+            void main() {
+                float dist = distance(gl_PointCoord, vec2(0.5));
+                if (dist > 0.5) discard;
+                
+                vec3 deepPurple = vec3(0.24, 0.05, 0.47);
+                vec3 electricBlue = vec3(0.18, 0.53, 0.95);
+                vec3 coreNeonPink = vec3(0.96, 0.32, 0.68);
+                
+                vec3 color = mix(deepPurple, electricBlue, vNoise + 0.3);
+                color = mix(color, coreNeonPink, max(0.0, vPosition.z * 0.4));
+                
+                float intensity = smoothstep(0.5, 0.1, dist);
+                color += vec3(0.4, 0.6, 1.0) * intensity * 0.4;
+
+                gl_FragColor = vec4(color, intensity * (0.7 + vNoise * 0.3));
+            }
+        `;
+
+        const particleCount = 28000; 
+        const geometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(particleCount * 3);
+        const normals = new Float32Array(particleCount * 3);
+
+        for (let i = 0; i < particleCount; i++) {
+            const u = Math.random();
+            const v = Math.random();
+            const theta = u * 2.0 * Math.PI;
+            const phi = Math.acos(2.0 * v - 1.0);
             
-            // Adding scatter/noise
-            const noise = (Math.random() - 0.5) * 0.4;
-            const r = radius + noise;
+            const radius = 1.35 + (Math.random() - 0.5) * 0.15; 
 
-            posArray[i] = r * Math.sin(phi) * Math.cos(theta);     // x
-            posArray[i+1] = r * Math.sin(phi) * Math.sin(theta);   // y
-            posArray[i+2] = r * Math.cos(phi);                     // z
+            const x = radius * Math.sin(phi) * Math.cos(theta);
+            const y = radius * Math.sin(phi) * Math.sin(theta);
+            const z = radius * Math.cos(phi);
+
+            positions[i * 3] = x;
+            positions[i * 3 + 1] = y;
+            positions[i * 3 + 2] = z;
+
+            vec = new THREE.Vector3(x, y, z).normalize();
+            normals[i * 3] = vec.x;
+            normals[i * 3 + 1] = vec.y;
+            normals[i * 3 + 2] = vec.z;
         }
 
-        particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
 
-       
-        const material = new THREE.PointsMaterial({
-            size: 0.015,
-            color: 0xa8b8ff,
+        const uniformData = {
+            uTime: { value: 0.0 },
+            uNoiseFreq: { value: 1.6 },
+            uNoiseAmp: { value: 0.38 }
+        };
+
+        const shaderMaterial = new THREE.ShaderMaterial({
+            vertexShader: vertexShader,
+            fragmentShader: fragmentShader,
+            uniforms: uniformData,
             transparent: true,
-            opacity: 0.8,
-            blending: THREE.AdditiveBlending // Crucial for the glowing energy effect
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
         });
 
-        const particlesMesh = new THREE.Points(particlesGeometry, material);
-        scene.add(particlesMesh);
+        const particleSystem = new THREE.Points(geometry, shaderMaterial);
+        scene.add(particleSystem);
 
-      
-        const coreGeometry = new THREE.SphereGeometry(1.5, 32, 32);
-        const coreMaterial = new THREE.MeshBasicMaterial({
-            color: 0x4B0082,
-            transparent: true,
-            opacity: 0.15,
-            blending: THREE.AdditiveBlending
-        });
-        const coreMesh = new THREE.Mesh(coreGeometry, coreMaterial);
-        scene.add(coreMesh);
+        const renderScene = new THREE.RenderPass(scene, camera);
+        
+        const bloomPass = new THREE.UnrealBloomPass(
+            new THREE.Vector2(container.clientWidth, container.clientHeight), 
+            2.2,  
+            0.4,  
+            0.15  
+        );
 
-        camera.position.z = 4.5;
+        const composer = new THREE.EffectComposer(renderer);
+        composer.addPass(renderScene);
+        composer.addPass(bloomPass);
 
-     
         const clock = new THREE.Clock();
 
-        function animate() {
-            requestAnimationFrame(animate);
+        function renderFrame() {
+            requestAnimationFrame(renderFrame);
+            
             const elapsedTime = clock.getElapsedTime();
+            uniformData.uTime.value = elapsedTime;
 
-            
-            particlesMesh.rotation.y += 0.002;
-            particlesMesh.rotation.x = Math.sin(elapsedTime * 0.2) * 0.2; // Slight wobble
-            
-            
-            const scale = 1 + Math.sin(elapsedTime * 2) * 0.05;
-            coreMesh.scale.set(scale, scale, scale);
+            particleSystem.rotation.y = elapsedTime * 0.04;
+            particleSystem.rotation.x = Math.sin(elapsedTime * 0.1) * 0.1;
 
-            renderer.render(scene, camera);
+            composer.render();
         }
 
-        animate();
+        renderFrame();
 
-        
         window.addEventListener('resize', () => {
-            camera.aspect = container.clientWidth / container.clientHeight;
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            
+            camera.aspect = width / height;
             camera.updateProjectionMatrix();
-            renderer.setSize(container.clientWidth, container.clientHeight);
+            
+            renderer.setSize(width, height);
+            composer.setSize(width, height);
         });
     </script>
 </body>
-          </html>
+</html>
